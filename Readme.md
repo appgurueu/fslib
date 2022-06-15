@@ -7,6 +7,8 @@ Written by Lars Müller alias [appgurueu](https://github.com/appgurueu) and lice
 Links:
 
 * [GitHub](https://github.com/appgurueu/fslib)
+* [ContentDB](https://content.minetest.net/packages/LMD/fslib/)
+* [Minetest Forums](https://forum.minetest.net/viewtopic.php?f=9&t=28261)
 
 ## API
 
