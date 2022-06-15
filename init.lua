@@ -8,17 +8,6 @@ minetest.register_on_leaveplayer(function(player)
 	formspecs[player:get_player_name()] = nil
 end)
 
-minetest.register_on_player_receive_fields(function(player, formname, fields)
-	local player_name = player:get_player_name()
-	local formspec = formspecs[player_name]
-	if formname ~= (formspec or {}).name then return end
-	if fields.quit then
-		formspecs[player_name] = nil
-	end
-	formspec.handler(fields)
-	return true -- don't call remaining functions
-end)
-
 -- S-expression formspec AST to string; purely a syntactical string building helper unaware of semantics
 local function build_formspec(formspec)
 	local rope = {}
@@ -157,7 +146,7 @@ fslib.hypertext_root = fslib.hypertext_tags[false]
 function fslib.show_formspec(player, formspec, handler)
 	formspec = fslib.build_formspec(formspec)
 	local player_name = player:get_player_name()
-	local formspec_name = "fslib:" .. id
+	local formspec_name = ("fslib:%d"):format(id)
 	formspecs[player_name] = {
 		name = formspec_name,
 		handler = handler or modlib.func.no_op,
@@ -165,6 +154,13 @@ function fslib.show_formspec(player, formspec, handler)
 	id = id + 1
 	if id > 2^50 then id = 1 end
 	minetest.show_formspec(player_name, formspec_name, formspec)
+	return formspec_name
+end
+
+function fslib.reshow_formspec(player, formspec_name, formspec)
+	local player_name = player:get_player_name()
+	assert(formspecs[player_name].name == formspec_name)
+	minetest.show_formspec(player_name, formspec_name, fslib.build_formspec(formspec))
 end
 
 function fslib.close_formspec(player)
@@ -173,3 +169,21 @@ function fslib.close_formspec(player)
 	formspecs[player_name] = nil
 	minetest.close_formspec(player_name, formspec.name)
 end
+
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	local player_name = player:get_player_name()
+	local formspec = formspecs[player_name]
+	if formname ~= (formspec or {}).name then return end
+	if fields.quit then
+		formspecs[player_name] = nil
+	end
+	local updated_formspec = formspec.handler(fields)
+	if updated_formspec then
+		if fields.quit then
+			fslib.show_formspec(player, updated_formspec, formspec.handler)
+		else
+			minetest.show_formspec(player_name, formspec.name, fslib.build_formspec(updated_formspec))
+		end
+	end
+	return true -- don't call remaining functions
+end)
