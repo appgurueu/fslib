@@ -129,27 +129,30 @@ function fslib.build_formspec(formspec)
 	return formspec
 end
 
-local self_enclosing = modlib.table.set{"item", "img", "tag", "global"}
-fslib.hypertext_tags = modlib.func.memoize(function(tag_name)
+local self_enclosing = {item = true, img = true, tag = true, global = true}
+fslib.hypertext_tags = setmetatable({}, {__index = function(self, tag_name)
 	local metatable = {
 		hypertext = true,
 		tag_name = tag_name,
-		self_enclosing = self_enclosing[tag_name]
+		self_enclosing = self_enclosing[tag_name],
 	}
-	return function(table)
+	local function constructor(table)
 		return setmetatable(table, metatable)
 	end
-end)
+	self[tag_name] = constructor
+	return constructor
+end})
 
 fslib.hypertext_root = fslib.hypertext_tags[false]
 
+local nop = function() end
 function fslib.show_formspec(player, formspec, handler)
 	formspec = fslib.build_formspec(formspec)
 	local player_name = player:get_player_name()
 	local formspec_name = ("fslib:%d"):format(id)
 	formspecs[player_name] = {
 		name = formspec_name,
-		handler = handler or modlib.func.no_op,
+		handler = handler or nop,
 	}
 	id = id + 1
 	if id > 2^50 then id = 1 end
